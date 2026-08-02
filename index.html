@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ro">
 <head>
     <meta charset="UTF-8">
@@ -14,7 +14,6 @@
             --board-bg: #e0d8c3;
         }
 
-
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg);
@@ -25,8 +24,8 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
+            user-select: none;
         }
-
 
         h1 {
             margin-bottom: 10px;
@@ -34,8 +33,7 @@
             letter-spacing: 2px;
         }
 
-
-        /* Containerul Tablei de Joc */
+        /* Containerul Tablei */
         #board {
             display: grid;
             grid-template-columns: repeat(15, 1fr);
@@ -50,7 +48,6 @@
             box-shadow: 0 8px 16px rgba(0,0,0,0.5);
         }
 
-
         /* Celulele individuale */
         .cell {
             background-color: var(--board-bg);
@@ -63,19 +60,16 @@
             color: #333;
             text-align: center;
             text-transform: uppercase;
-            user-select: none;
+            position: relative;
         }
 
-
-        /* Culori speciale pentru multiplicatori */
         .cell.tw { background-color: var(--tw); color: white; }
         .cell.dw { background-color: var(--dw); color: #333; }
         .cell.tl { background-color: var(--tl); color: white; }
         .cell.dl { background-color: var(--dl); color: #333; }
         .cell.center { background-color: #ffcc00; color: #333; font-size: 14px; }
 
-
-        /* Zona pentru literele jucătorului */
+        /* Suportul cu litere */
         #rack {
             margin-top: 20px;
             display: flex;
@@ -84,10 +78,13 @@
             padding: 10px 20px;
             border-radius: 10px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            min-height: 45px;
+            min-height: 42px;
+            min-width: 300px;
+            justify-content: center;
+            align-items: center;
         }
 
-
+        /* Stilul piesei cu literă */
         .tile {
             width: 40px;
             height: 40px;
@@ -100,68 +97,110 @@
             font-weight: bold;
             font-size: 20px;
             box-shadow: inset 0 -3px 0 #d2b48c, 0 2px 4px rgba(0,0,0,0.4);
-            cursor: pointer;
+            cursor: grab;
+            position: absolute; /* Permite suprapunerea perfectă în celulă */
+            z-index: 10;
+        }
+
+        /* Când piesa este plasată pe tablă se micșorează puțin ca să încapă în celulă */
+        .cell .tile {
+            width: 90%;
+            height: 90%;
+            font-size: 14px;
+            box-shadow: inset 0 -2px 0 #d2b48c, 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .tile:active {
+            cursor: grabbing;
         }
     </style>
 </head>
 <body>
 
-
     <h1>SCRABBLE</h1>
     
-    <!-- Tabla de 15x15 va fi generată aici de JavaScript -->
     <div id="board"></div>
 
-
-    <!-- Suportul cu literele jucătorului (Exemplu) -->
     <div id="rack">
-        <div class="tile">A</div>
-        <div class="tile">N</div>
-        <div class="tile">A</div>
-        <div class="tile">R</div>
-        <div class="tile">E</div>
-        <div class="tile">M</div>
-        <div class="tile">E</div>
+        <!-- Am adăugat id-uri unice și atributul draggable="true" pentru fiecare piesă -->
+        <div class="tile" draggable="true" id="tile-1">A</div>
+        <div class="tile" draggable="true" id="tile-2">N</div>
+        <div class="tile" draggable="true" id="tile-3">A</div>
+        <div class="tile" draggable="true" id="tile-4">R</div>
+        <div class="tile" draggable="true" id="tile-5">E</div>
+        <div class="tile" draggable="true" id="tile-6">M</div>
+        <div class="tile" draggable="true" id="tile-7">E</div>
     </div>
-
 
     <script>
         const board = document.getElementById('board');
+        const rack = document.getElementById('rack');
 
-
-        // Pozițiile fixe ale multiplicatorilor pe o tablă standard de Scrabble
+        // Pozițiile multiplicatorilor
         const TW =;
         const DW =;
         const TL =;
         const DL =;
         const CENTER = 112;
 
-
-        // Generăm cele 225 de pătrățele
+        // Generăm tabla
         for (let i = 0; i < 225; i++) {
             const cell = document.createElement('div');
             cell.classList.add('cell');
+            cell.dataset.index = i; // Salvăm indexul celulei
             
-            // Aplicăm textul și stilul în funcție de tipul căsuței
-            if (i === CENTER) {
-                cell.classList.add('center');
-                cell.innerText = '★';
-            } else if (TW.includes(i)) {
-                cell.classList.add('tw');
-                cell.innerText = '3W';
-            } else if (DW.includes(i)) {
-                cell.classList.add('dw');
-                cell.innerText = '2W';
-            } else if (TL.includes(i)) {
-                cell.classList.add('tl');
-                cell.innerText = '3L';
-            } else if (DL.includes(i)) {
-                cell.classList.add('dl');
-                cell.innerText = '2L';
-            }
+            if (i === CENTER) { cell.classList.add('center'); cell.innerText = '★'; }
+            else if (TW.includes(i)) { cell.classList.add('tw'); cell.innerText = '3W'; }
+            else if (DW.includes(i)) { cell.classList.add('dw'); cell.innerText = '2W'; }
+            else if (TL.includes(i)) { cell.classList.add('tl'); cell.innerText = '3L'; }
+            else if (DL.includes(i)) { cell.classList.add('dl'); cell.innerText = '2L'; }
 
+            // Evenimente pentru recepționarea piesei (Drop)
+            cell.addEventListener('dragover', permiteDrop);
+            cell.addEventListener('drop', plaseazaPiesa);
 
             board.appendChild(cell);
+        }
+
+        // Permitem suportului de jos să primească piesele înapoi dacă te răzgândești
+        rack.addEventListener('dragover', permiteDrop);
+        rack.addEventListener('drop', plaseazaPiesa);
+
+        // Adăugăm evenimentul de pornire a mișcării pentru toate literele
+        document.querySelectorAll('.tile').forEach(tile => {
+            tile.addEventListener('dragstart', pornesteDrag);
+        });
+
+        function pornesteDrag(eveniment) {
+            // Salvăm ID-ul piesei pe care o mutăm
+            eveniment.dataTransfer.setData("text/plain", eveniment.target.id);
+        }
+
+        function permiteDrop(eveniment) {
+            // Oprim comportamentul standard al browserului pentru a permite plasarea
+            eveniment.preventDefault();
+        }
+
+        function plaseazaPiesa(eveniment) {
+            eveniment.preventDefault();
+            const idPiesa = eveniment.dataTransfer.getData("text/plain");
+            const piesa = document.getElementById(idPiesa);
+            
+            // Ținta poate fi o celulă goală sau suportul de jos (rack)
+            let tinta = eveniment.target;
+
+            // Dacă jucătorul scapă piesa din greșeală peste textul din celulă (ex: '3W' sau '★')
+            if (!tinta.classList.contains('cell') && tinta.id !== 'rack') {
+                tinta = tinta.parentElement;
+            }
+
+            // Verificăm dacă ținta este o celulă și dacă este deja ocupată de o altă piesă
+            if (tinta.classList.contains('cell') && tinta.querySelector('.tile')) {
+                return; // Nu facem nimic dacă e deja ocupat
+            }
+
+            // Mutăm piesa în noua locație
+            tinta.appendChild(piesa);
         }
     </script>
 </body>
