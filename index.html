@@ -1,0 +1,168 @@
+﻿<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrabble în Browser</title>
+    <style>
+        :root {
+            --tw: #ff4d4d; /* Triple Word */
+            --dw: #ffb3b3; /* Double Word */
+            --tl: #3399ff; /* Triple Letter */
+            --dl: #99ccff; /* Double Letter */
+            --bg: #1e1e24;
+            --board-bg: #e0d8c3;
+        }
+
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: white;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+
+        h1 {
+            margin-bottom: 10px;
+            font-size: 24px;
+            letter-spacing: 2px;
+        }
+
+
+        /* Containerul Tablei de Joc */
+        #board {
+            display: grid;
+            grid-template-columns: repeat(15, 1fr);
+            grid-template-rows: repeat(15, 1fr);
+            gap: 2px;
+            width: 90vw;
+            max-width: 550px;
+            aspect-ratio: 1 / 1;
+            background-color: #8c7853;
+            padding: 5px;
+            border-radius: 8px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+        }
+
+
+        /* Celulele individuale */
+        .cell {
+            background-color: var(--board-bg);
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            text-transform: uppercase;
+            user-select: none;
+        }
+
+
+        /* Culori speciale pentru multiplicatori */
+        .cell.tw { background-color: var(--tw); color: white; }
+        .cell.dw { background-color: var(--dw); color: #333; }
+        .cell.tl { background-color: var(--tl); color: white; }
+        .cell.dl { background-color: var(--dl); color: #333; }
+        .cell.center { background-color: #ffcc00; color: #333; font-size: 14px; }
+
+
+        /* Zona pentru literele jucătorului */
+        #rack {
+            margin-top: 20px;
+            display: flex;
+            gap: 8px;
+            background-color: #4a3b32;
+            padding: 10px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            min-height: 45px;
+        }
+
+
+        .tile {
+            width: 40px;
+            height: 40px;
+            background-color: #f3e5ab;
+            color: #333;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 20px;
+            box-shadow: inset 0 -3px 0 #d2b48c, 0 2px 4px rgba(0,0,0,0.4);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+
+    <h1>SCRABBLE</h1>
+    
+    <!-- Tabla de 15x15 va fi generată aici de JavaScript -->
+    <div id="board"></div>
+
+
+    <!-- Suportul cu literele jucătorului (Exemplu) -->
+    <div id="rack">
+        <div class="tile">A</div>
+        <div class="tile">N</div>
+        <div class="tile">A</div>
+        <div class="tile">R</div>
+        <div class="tile">E</div>
+        <div class="tile">M</div>
+        <div class="tile">E</div>
+    </div>
+
+
+    <script>
+        const board = document.getElementById('board');
+
+
+        // Pozițiile fixe ale multiplicatorilor pe o tablă standard de Scrabble
+        const TW =;
+        const DW =;
+        const TL =;
+        const DL =;
+        const CENTER = 112;
+
+
+        // Generăm cele 225 de pătrățele
+        for (let i = 0; i < 225; i++) {
+            const cell = document.createElement('div');
+            cell.classList.add('cell');
+            
+            // Aplicăm textul și stilul în funcție de tipul căsuței
+            if (i === CENTER) {
+                cell.classList.add('center');
+                cell.innerText = '★';
+            } else if (TW.includes(i)) {
+                cell.classList.add('tw');
+                cell.innerText = '3W';
+            } else if (DW.includes(i)) {
+                cell.classList.add('dw');
+                cell.innerText = '2W';
+            } else if (TL.includes(i)) {
+                cell.classList.add('tl');
+                cell.innerText = '3L';
+            } else if (DL.includes(i)) {
+                cell.classList.add('dl');
+                cell.innerText = '2L';
+            }
+
+
+            board.appendChild(cell);
+        }
+    </script>
+</body>
+</html>
