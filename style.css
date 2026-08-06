@@ -14,6 +14,15 @@
     --tile-shadow: #d3b17b;
     --ok: #1c8b4a;
     --warn: #b15000;
+
+    --p1-rack: #6b4f37;
+    --p1-rack-edge: #513a28;
+    --p2-rack: #345a73;
+    --p2-rack-edge: #274458;
+    --p3-rack: #5f6d33;
+    --p3-rack-edge: #495526;
+    --p4-rack: #7a3b53;
+    --p4-rack-edge: #5f2d41;
 }
 
 * {
@@ -66,6 +75,7 @@ body {
 #board {
     display: grid;
     grid-template-columns: repeat(15, minmax(0, 1fr));
+    grid-template-rows: repeat(15, minmax(0, 1fr));
     gap: 2px;
     width: 100%;
     max-width: 760px;
@@ -78,6 +88,8 @@ body {
 
 .cell {
     position: relative;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
     border-radius: 3px;
     display: flex;
     align-items: center;
@@ -116,8 +128,10 @@ body {
 }
 
 .tile {
-    width: 92%;
-    height: 92%;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
     border-radius: 5px;
     border: 1px solid #a5824c;
     background: linear-gradient(160deg, #ffefc9, var(--tile));
@@ -185,11 +199,32 @@ body {
     background: #f8f1e6;
     color: #5c4a35;
     font-size: 0.95rem;
+    border: 1px solid transparent;
 }
 
 .scoreboard-item.active {
-    background: linear-gradient(160deg, #ffefc9, #fde4b3);
+    filter: brightness(1.06);
     font-weight: 700;
+}
+
+.scoreboard-item.player-row-1 {
+    background: color-mix(in srgb, var(--p1-rack) 28%, white);
+    border-color: color-mix(in srgb, var(--p1-rack-edge) 55%, white);
+}
+
+.scoreboard-item.player-row-2 {
+    background: color-mix(in srgb, var(--p2-rack) 28%, white);
+    border-color: color-mix(in srgb, var(--p2-rack-edge) 55%, white);
+}
+
+.scoreboard-item.player-row-3 {
+    background: color-mix(in srgb, var(--p3-rack) 28%, white);
+    border-color: color-mix(in srgb, var(--p3-rack-edge) 55%, white);
+}
+
+.scoreboard-item.player-row-4 {
+    background: color-mix(in srgb, var(--p4-rack) 28%, white);
+    border-color: color-mix(in srgb, var(--p4-rack-edge) 55%, white);
 }
 
 .scoreboard-item span:last-child {
@@ -267,6 +302,26 @@ body {
     border-radius: 10px;
     background: var(--rack);
     border: 1px solid #513a28;
+}
+
+body.player-theme-1 #rack {
+    background: var(--p1-rack);
+    border-color: var(--p1-rack-edge);
+}
+
+body.player-theme-2 #rack {
+    background: var(--p2-rack);
+    border-color: var(--p2-rack-edge);
+}
+
+body.player-theme-3 #rack {
+    background: var(--p3-rack);
+    border-color: var(--p3-rack-edge);
+}
+
+body.player-theme-4 #rack {
+    background: var(--p4-rack);
+    border-color: var(--p4-rack-edge);
 }
 
 .rack-slot {

@@ -33,8 +33,10 @@ const TILE_CONFIG = {
     X: [1, 10], Z: [1, 8]
 };
 
+const PLAYER_THEME_CLASSES = ["player-theme-1", "player-theme-2", "player-theme-3", "player-theme-4"];
+
 let board = [];
-let rack = [];
+let playerRacks = [];
 let bag = [];
 let placedThisTurn = new Set();
 let playerScores = [];
@@ -69,12 +71,22 @@ function buildBag() {
     return nextBag;
 }
 
-function drawTiles(count) {
+function drawTiles(count, owner) {
     const drawn = [];
     for (let i = 0; i < count && bag.length > 0; i += 1) {
-        drawn.push(bag.pop());
+        const tile = bag.pop();
+        drawn.push({ ...tile, owner });
     }
     return drawn;
+}
+
+function getActiveRack() {
+    return playerRacks[currentPlayer] || [];
+}
+
+function applyCurrentTheme() {
+    document.body.classList.remove(...PLAYER_THEME_CLASSES);
+    document.body.classList.add(PLAYER_THEME_CLASSES[currentPlayer]);
 }
 
 function getMultiplierType(index) {
@@ -88,7 +100,8 @@ function getMultiplierType(index) {
 
 function createTileElement(tile, locked, onDoubleClick = null) {
     const tileEl = document.createElement("div");
-    tileEl.className = `tile${locked ? " locked" : ""}`;
+    const playerClass = Number.isInteger(tile.owner) ? ` player-${tile.owner + 1}` : "";
+    tileEl.className = `tile${playerClass}${locked ? " locked" : ""}`;
     tileEl.draggable = !locked;
     tileEl.dataset.tileId = tile.id;
     tileEl.innerHTML = `${tile.letter}<span class="tile-value">${tile.value}</span>`;
@@ -127,6 +140,7 @@ function renderBoard() {
 }
 
 function renderRack() {
+    const rack = getActiveRack();
     rackEl.innerHTML = "";
     rackEl.addEventListener("dragover", onAllowDrop);
     rackEl.addEventListener("drop", onDropToRack);
@@ -146,30 +160,33 @@ function renderRack() {
 }
 
 function updateStats() {
-    scoreEl.textContent = String(playerScores[currentPlayer] || 0);
-    currentPlayerEl.textContent = String(currentPlayer + 1);
-    turnEl.textContent = String(turn);
-    tilesLeftEl.textContent = String(bag.length);
-    rackCountEl.textContent = `${rack.length}/7`;
+    const rack = getActiveRack();
+    if (scoreEl) scoreEl.textContent = String(playerScores[currentPlayer] || 0);
+    if (currentPlayerEl) currentPlayerEl.textContent = String(currentPlayer + 1);
+    if (turnEl) turnEl.textContent = String(turn);
+    if (tilesLeftEl) tilesLeftEl.textContent = String(bag.length);
+    if (rackCountEl) rackCountEl.textContent = `${rack.length}/7`;
 }
 
 function renderPlayerScores() {
     playerScoreboardEl.innerHTML = "";
     for (let i = 0; i < playerCount; i += 1) {
         const playerItem = document.createElement("div");
-        playerItem.className = `scoreboard-item${i === currentPlayer ? " active" : ""}`;
+        playerItem.className = `scoreboard-item player-row-${i + 1}${i === currentPlayer ? " active" : ""}`;
         playerItem.innerHTML = `<span>Player ${i + 1}</span><span>${playerScores[i]}</span>`;
         playerScoreboardEl.appendChild(playerItem);
     }
 }
 
 function renderTileInventory() {
+    const allRackTiles = playerRacks.flat();
+    const boardTiles = board.filter(Boolean);
     const counts = {};
     Object.keys(TILE_CONFIG).forEach((letter) => {
         counts[letter] = 0;
     });
 
-    [...bag, ...rack].forEach((tile) => {
+    [...bag, ...allRackTiles, ...boardTiles].forEach((tile) => {
         counts[tile.letter] += 1;
     });
 
@@ -188,6 +205,7 @@ function setStatus(message, type = "warn") {
 }
 
 function rerender() {
+    applyCurrentTheme();
     renderBoard();
     renderRack();
     updateStats();
@@ -196,6 +214,7 @@ function rerender() {
 }
 
 function findTileLocation(tileId) {
+    const rack = getActiveRack();
     const rackIndex = rack.findIndex((tile) => tile.id === tileId);
     if (rackIndex >= 0) {
         return { area: "rack", rackIndex };
@@ -268,6 +287,7 @@ function onAllowDrop(event) {
 }
 
 function moveTileToCell(tileId, targetIndex) {
+    const rack = getActiveRack();
     if (board[targetIndex]) {
         return;
     }
@@ -304,6 +324,7 @@ function onDropToCell(event) {
 }
 
 function onDropToRack(event) {
+    const rack = getActiveRack();
     event.preventDefault();
     const tileId = event.dataTransfer.getData("text/plain");
     const location = findTileLocation(tileId);
@@ -323,6 +344,7 @@ function onDropToRack(event) {
 }
 
 function recallTiles() {
+    const rack = getActiveRack();
     const indexes = Array.from(placedThisTurn);
     indexes.forEach((index) => {
         const tile = board[index];
@@ -337,6 +359,7 @@ function recallTiles() {
 }
 
 function shuffleRack() {
+    const rack = getActiveRack();
     for (let i = rack.length - 1; i > 0; i -= 1) {
         const j = Math.floor(Math.random() * (i + 1));
         [rack[i], rack[j]] = [rack[j], rack[i]];
@@ -458,6 +481,7 @@ function scoreWord(indices) {
 }
 
 function submitMove() {
+    const rack = getActiveRack();
     const placed = Array.from(placedThisTurn);
     if (placed.length === 0) {
         setStatus("Place at least one tile before submitting.", "warn");
@@ -518,7 +542,7 @@ function submitMove() {
     });
 
     placedThisTurn.clear();
-    rack.push(...drawTiles(7 - rack.length));
+    rack.push(...drawTiles(7 - rack.length, currentPlayer));
     rerender();
     setStatus(`Great move. +${gained} points.`, "ok");
 
@@ -536,19 +560,23 @@ function passTurn() {
     recallTiles();
     currentPlayer = (currentPlayer + 1) % playerCount;
     turn += 1;
-    updateStats();
+    rerender();
     setStatus("Turn passed.", "warn");
 }
 
 function newGame() {
     board = Array(BOARD_CELLS).fill(null);
-    rack = [];
+    playerRacks = [];
     placedThisTurn = new Set();
     playerScores = Array(playerCount).fill(0);
     currentPlayer = 0;
     turn = 1;
     bag = buildBag();
-    rack.push(...drawTiles(7));
+
+    for (let i = 0; i < playerCount; i += 1) {
+        playerRacks.push(drawTiles(7, i));
+    }
+
     playerCountEl.value = String(playerCount);
     rerender();
     setStatus(`New game started for ${playerCount} players. Player 1 begins.`, "warn");
