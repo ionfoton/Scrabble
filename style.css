@@ -1,0 +1,332 @@
+:root {
+    --bg-1: #f7f2e8;
+    --bg-2: #e6dcc7;
+    --ink: #222;
+    --surface: #fff9ee;
+    --tw: #ff5f3d;
+    --dw: #ffb79c;
+    --tl: #2f8cff;
+    --dl: #9fd0ff;
+    --center: #ffd166;
+    --board-edge: #7f6445;
+    --rack: #6b4f37;
+    --tile: #f4ddb0;
+    --tile-shadow: #d3b17b;
+    --ok: #1c8b4a;
+    --warn: #b15000;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: Georgia, "Times New Roman", serif;
+    color: var(--ink);
+    background:
+        radial-gradient(circle at 15% 15%, rgba(255, 255, 255, 0.9), transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(255, 214, 102, 0.25), transparent 45%),
+        linear-gradient(130deg, var(--bg-1), var(--bg-2));
+    padding: 24px;
+    display: flex;
+    justify-content: center;
+}
+
+.app {
+    width: 100%;
+    max-width: 1080px;
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+    align-items: start;
+}
+
+.board-panel,
+.side-panel {
+    background: rgba(255, 249, 238, 0.9);
+    border: 1px solid rgba(127, 100, 69, 0.25);
+    border-radius: 16px;
+    box-shadow: 0 10px 22px rgba(30, 18, 8, 0.16);
+    backdrop-filter: blur(2px);
+}
+
+.board-panel {
+    padding: 18px;
+}
+
+.title {
+    margin: 0 0 12px;
+    font-size: clamp(1.4rem, 2vw, 2rem);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+#board {
+    display: grid;
+    grid-template-columns: repeat(15, minmax(0, 1fr));
+    gap: 2px;
+    width: 100%;
+    max-width: 760px;
+    aspect-ratio: 1 / 1;
+    padding: 8px;
+    border-radius: 12px;
+    background: var(--board-edge);
+    margin: 0 auto;
+}
+
+.cell {
+    position: relative;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ede0ca;
+    color: #4f4538;
+    font-size: clamp(0.42rem, 1vw, 0.62rem);
+    font-weight: 700;
+    user-select: none;
+}
+
+.cell.tw {
+    background: var(--tw);
+    color: #fff;
+}
+
+.cell.dw {
+    background: var(--dw);
+}
+
+.cell.tl {
+    background: var(--tl);
+    color: #fff;
+}
+
+.cell.dl {
+    background: var(--dl);
+}
+
+.cell.center {
+    background: var(--center);
+}
+
+.bonus {
+    pointer-events: none;
+}
+
+.tile {
+    width: 92%;
+    height: 92%;
+    border-radius: 5px;
+    border: 1px solid #a5824c;
+    background: linear-gradient(160deg, #ffefc9, var(--tile));
+    box-shadow: inset 0 -2px 0 var(--tile-shadow), 0 1px 2px rgba(0, 0, 0, 0.3);
+    color: #2a2a2a;
+    font-size: clamp(0.8rem, 1.7vw, 1.2rem);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    position: relative;
+}
+
+.tile.locked {
+    cursor: default;
+}
+
+.tile-value {
+    position: absolute;
+    right: 4px;
+    bottom: 2px;
+    font-size: 0.58em;
+    opacity: 0.9;
+}
+
+.side-panel {
+    padding: 16px;
+    display: grid;
+    gap: 12px;
+}
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.card {
+    padding: 10px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid #ecdcc3;
+}
+
+.inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.scoreboard {
+    display: grid;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.scoreboard-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    border-radius: 8px;
+    background: #f8f1e6;
+    color: #5c4a35;
+    font-size: 0.95rem;
+}
+
+.scoreboard-item.active {
+    background: linear-gradient(160deg, #ffefc9, #fde4b3);
+    font-weight: 700;
+}
+
+.scoreboard-item span:last-child {
+    font-variant-numeric: tabular-nums;
+}
+
+.inventory-tile {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 5px;
+    border: 1px solid #a5824c;
+    background: linear-gradient(160deg, #ffefc9, var(--tile));
+    box-shadow: inset 0 -2px 0 var(--tile-shadow), 0 1px 2px rgba(0, 0, 0, 0.25);
+    color: #2a2a2a;
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.inventory-tile .tile-count {
+    position: absolute;
+    top: 4px;
+    right: 5px;
+    font-size: 0.65em;
+    opacity: 0.85;
+}
+
+.inventory-tile .tile-value {
+    position: absolute;
+    right: 5px;
+    bottom: 3px;
+    font-size: 0.65em;
+    opacity: 0.85;
+}
+
+.label {
+    display: block;
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #81684b;
+}
+
+.value {
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+#status {
+    min-height: 48px;
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #ecdcc3;
+    padding: 10px;
+    font-size: 0.95rem;
+}
+
+.ok {
+    color: var(--ok);
+}
+
+.warn {
+    color: var(--warn);
+}
+
+#rack {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    min-height: 74px;
+    padding: 10px;
+    border-radius: 10px;
+    background: var(--rack);
+    border: 1px solid #513a28;
+}
+
+.rack-slot {
+    border: 1px dashed rgba(255, 255, 255, 0.45);
+    border-radius: 6px;
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+button {
+    appearance: none;
+    border: none;
+    background: #2a5f8a;
+    color: #fff;
+    padding: 10px;
+    border-radius: 9px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 120ms ease, filter 120ms ease;
+}
+
+button:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.04);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+button.secondary {
+    background: #806146;
+}
+
+button.danger {
+    background: #a2412e;
+}
+
+@media (max-width: 960px) {
+    .app {
+        grid-template-columns: 1fr;
+    }
+
+    .board-panel {
+        order: 1;
+    }
+
+    .side-panel {
+        order: 2;
+    }
+
+    #board {
+        max-width: 92vw;
+    }
+}
