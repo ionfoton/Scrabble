@@ -10,7 +10,10 @@ const tilesLeftEl = document.getElementById("tiles-left");
 const rackCountEl = document.getElementById("rack-count");
 const currentPlayerEl = document.getElementById("current-player");
 const statusEl = document.getElementById("status");
+const lastMoveTitleEl = document.getElementById("last-move-title");
+const lastMoveEl = document.getElementById("last-move");
 const tileInventoryEl = document.getElementById("tile-inventory");
+const inventoryTotalEl = document.getElementById("inventory-total");
 const playerCountEl = document.getElementById("player-count");
 const playerScoreboardEl = document.getElementById("player-scoreboard");
 
@@ -26,11 +29,11 @@ const TL = new Set([20, 24, 76, 80, 84, 88, 136, 140, 144, 148, 200, 204]);
 const DL = new Set([3, 11, 36, 38, 45, 52, 59, 92, 96, 98, 102, 108, 116, 122, 126, 128, 132, 165, 172, 179, 186, 188, 213, 221]);
 
 const TILE_CONFIG = {
-    A: [10, 1], B: [2, 9], C: [5, 1], D: [4, 3], E: [9, 1],
-    F: [2, 4], G: [2, 6], H: [1, 8], I: [11, 1], J: [1, 10],
-    L: [5, 1], M: [3, 4], N: [6, 1], O: [5, 2], P: [4, 2],
-    R: [6, 1], S: [6, 1], T: [7, 1], U: [5, 1], V: [2, 4],
-    X: [1, 10], Z: [1, 8]
+    A: [11, 1], B: [2, 9], C: [5, 1], D: [4, 2], E: [9, 1],
+    F: [2, 8], G: [2, 9], H: [1, 10], I: [10, 1], J: [1, 10],
+    L: [4, 1], M: [3, 4], N: [6, 1], O: [5, 1], P: [4, 2],
+    R: [6, 1], S: [5, 1], T: [7, 1], U: [6, 1], V: [2, 8],
+    X: [1, 10], Z: [1, 10]
 };
 
 const PLAYER_THEME_CLASSES = ["player-theme-1", "player-theme-2", "player-theme-3", "player-theme-4"];
@@ -40,10 +43,13 @@ let playerRacks = [];
 let bag = [];
 let placedThisTurn = new Set();
 let playerScores = [];
+let playerNames = [];
 let playerCount = 2;
 let currentPlayer = 0;
 let turn = 1;
 let tileIdCounter = 0;
+let consecutivePasses = 0;
+let gameEnded = false;
 
 function rowOf(index) {
     return Math.floor(index / BOARD_SIZE);
@@ -64,6 +70,9 @@ function buildBag() {
             nextBag.push({ id: `tile-${tileIdCounter++}`, letter, value });
         }
     });
+    for (let i = 0; i < 2; i += 1) {
+        nextBag.push({ id: `tile-${tileIdCounter++}`, letter: "", value: 0, isJoker: true });
+    }
     for (let i = nextBag.length - 1; i > 0; i -= 1) {
         const j = Math.floor(Math.random() * (i + 1));
         [nextBag[i], nextBag[j]] = [nextBag[j], nextBag[i]];
@@ -101,10 +110,11 @@ function getMultiplierType(index) {
 function createTileElement(tile, locked, onDoubleClick = null) {
     const tileEl = document.createElement("div");
     const playerClass = Number.isInteger(tile.owner) ? ` player-${tile.owner + 1}` : "";
+    const displayLetter = tile.isJoker ? (tile.assignedLetter || "&#9786;") : tile.letter;
     tileEl.className = `tile${playerClass}${locked ? " locked" : ""}`;
     tileEl.draggable = !locked;
     tileEl.dataset.tileId = tile.id;
-    tileEl.innerHTML = `${tile.letter}<span class="tile-value">${tile.value}</span>`;
+    tileEl.innerHTML = `${displayLetter}<span class="tile-value">${tile.value}</span>`;
     if (!locked) {
         tileEl.addEventListener("dragstart", onDragStart);
         if (onDoubleClick) {
@@ -173,33 +183,77 @@ function renderPlayerScores() {
     for (let i = 0; i < playerCount; i += 1) {
         const playerItem = document.createElement("div");
         playerItem.className = `scoreboard-item player-row-${i + 1}${i === currentPlayer ? " active" : ""}`;
-        playerItem.innerHTML = `<span>Player ${i + 1}</span><span>${playerScores[i]}</span>`;
+        const name = playerNames[i] || `Player ${i + 1}`;
+        playerItem.innerHTML = `<span>${name}</span><span>${playerScores[i]}</span>`;
+        playerItem.title = "Click to edit player name";
+        playerItem.addEventListener("click", () => editPlayerName(i, playerItem));
         playerScoreboardEl.appendChild(playerItem);
     }
 }
 
+function editPlayerName(playerIndex, playerItem) {
+    if (playerItem.querySelector("input")) {
+        return;
+    }
+
+    const currentName = playerNames[playerIndex] || `Player ${playerIndex + 1}`;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = currentName;
+    input.maxLength = 20;
+    input.className = "player-name-input";
+    input.setAttribute("aria-label", `Name for Player ${playerIndex + 1}`);
+    input.addEventListener("click", (event) => event.stopPropagation());
+    input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            savePlayerName(playerIndex, input.value);
+        }
+        if (event.key === "Escape") {
+            rerender();
+        }
+    });
+    input.addEventListener("blur", () => savePlayerName(playerIndex, input.value));
+
+    playerItem.replaceChildren(input, document.createTextNode(String(playerScores[playerIndex])));
+    input.focus();
+    input.select();
+}
+
+function savePlayerName(playerIndex, value) {
+    playerNames[playerIndex] = value.trim().slice(0, 20);
+    rerender();
+}
+
 function renderTileInventory() {
-    const allRackTiles = playerRacks.flat();
-    const boardTiles = board.filter(Boolean);
     const counts = {};
     Object.keys(TILE_CONFIG).forEach((letter) => {
         counts[letter] = 0;
     });
+    counts.JOKER = 0;
 
-    [...bag, ...allRackTiles, ...boardTiles].forEach((tile) => {
-        counts[tile.letter] += 1;
+    bag.forEach((tile) => {
+        counts[tile.isJoker ? "JOKER" : tile.letter] += 1;
     });
 
+    if (inventoryTotalEl) inventoryTotalEl.textContent = String(bag.length);
     tileInventoryEl.innerHTML = "";
     Object.keys(counts).sort().forEach((letter) => {
         const item = document.createElement("div");
         item.className = "inventory-tile";
-        item.innerHTML = `${letter}<span class="tile-count">${counts[letter]}</span><span class="tile-value">${TILE_CONFIG[letter][1]}</span>`;
+        if (letter === "JOKER") {
+            item.classList.add("inventory-joker");
+            item.innerHTML = `&#9786;<span class="tile-count">${counts[letter]}</span><span class="tile-value">0</span>`;
+        } else {
+            item.innerHTML = `${letter}<span class="tile-count">${counts[letter]}</span><span class="tile-value">${TILE_CONFIG[letter][1]}</span>`;
+        }
         tileInventoryEl.appendChild(item);
     });
 }
 
 function setStatus(message, type = "warn") {
+    if (!statusEl) {
+        return;
+    }
     statusEl.textContent = message;
     statusEl.className = type;
 }
@@ -286,6 +340,26 @@ function onAllowDrop(event) {
     event.preventDefault();
 }
 
+function assignJokerLetter(tile) {
+    if (!tile.isJoker || tile.assignedLetter) {
+        return true;
+    }
+
+    const input = window.prompt("Choose the letter this joker represents (A-Z):", "A");
+    if (input === null) {
+        return false;
+    }
+
+    const assignedLetter = input.trim().toUpperCase();
+    if (!/^[A-Z]$/.test(assignedLetter)) {
+        setStatus("Enter one letter from A to Z for the joker.", "warn");
+        return false;
+    }
+
+    tile.assignedLetter = assignedLetter;
+    return true;
+}
+
 function moveTileToCell(tileId, targetIndex) {
     const rack = getActiveRack();
     if (board[targetIndex]) {
@@ -299,13 +373,22 @@ function moveTileToCell(tileId, targetIndex) {
 
     let tile;
     if (location.area === "rack") {
-        tile = rack.splice(location.rackIndex, 1)[0];
-        placedThisTurn.add(targetIndex);
+        tile = rack[location.rackIndex];
     } else {
         tile = board[location.boardIndex];
         if (!tile || tile.locked) {
             return;
         }
+    }
+
+    if (!assignJokerLetter(tile)) {
+        return;
+    }
+
+    if (location.area === "rack") {
+        rack.splice(location.rackIndex, 1);
+        placedThisTurn.add(targetIndex);
+    } else {
         board[location.boardIndex] = null;
         placedThisTurn.delete(location.boardIndex);
         placedThisTurn.add(targetIndex);
@@ -359,11 +442,12 @@ function recallTiles() {
 }
 
 function shuffleRack() {
-    const rack = getActiveRack();
-    for (let i = rack.length - 1; i > 0; i -= 1) {
+    const shuffledRack = [...getActiveRack()];
+    for (let i = shuffledRack.length - 1; i > 0; i -= 1) {
         const j = Math.floor(Math.random() * (i + 1));
-        [rack[i], rack[j]] = [rack[j], rack[i]];
+        [shuffledRack[i], shuffledRack[j]] = [shuffledRack[j], shuffledRack[i]];
     }
+    playerRacks[currentPlayer] = shuffledRack;
     renderRack();
     updateStats();
     setStatus("Rack shuffled.", "warn");
@@ -405,20 +489,32 @@ function validateLine(placed) {
         const row = rowOf(placed[0]);
         const minCol = Math.min(...placed.map(colOf));
         const maxCol = Math.max(...placed.map(colOf));
+        let consecutiveLocked = 0;
 
         for (let col = minCol; col <= maxCol; col += 1) {
-            if (!board[indexFrom(row, col)]) {
+            const tile = board[indexFrom(row, col)];
+            if (!tile) {
                 return { ok: false, message: "Move must be contiguous (no gaps)." };
+            }
+            consecutiveLocked = tile.locked ? consecutiveLocked + 1 : 0;
+            if (consecutiveLocked > 1) {
+                return { ok: false, message: "You may jump over only one adjacent existing letter." };
             }
         }
     } else {
         const col = colOf(placed[0]);
         const minRow = Math.min(...placed.map(rowOf));
         const maxRow = Math.max(...placed.map(rowOf));
+        let consecutiveLocked = 0;
 
         for (let row = minRow; row <= maxRow; row += 1) {
-            if (!board[indexFrom(row, col)]) {
+            const tile = board[indexFrom(row, col)];
+            if (!tile) {
                 return { ok: false, message: "Move must be contiguous (no gaps)." };
+            }
+            consecutiveLocked = tile.locked ? consecutiveLocked + 1 : 0;
+            if (consecutiveLocked > 1) {
+                return { ok: false, message: "You may jump over only one adjacent existing letter." };
             }
         }
     }
@@ -480,7 +576,103 @@ function scoreWord(indices) {
     return sum * wordMultiplier;
 }
 
+function getTileLetter(tile) {
+    return tile.isJoker ? tile.assignedLetter : tile.letter;
+}
+
+function getPlayerLabel(playerIndex) {
+    return playerNames[playerIndex] || `Player ${playerIndex + 1}`;
+}
+
+function renderLastMove(words, wordScores, gained, bonus) {
+    const details = words.map((word, index) => {
+        const wordText = word.map((idx) => getTileLetter(board[idx])).join("");
+        return `${wordText} - ${wordScores[index]} pts`;
+    });
+    const playerLabel = getPlayerLabel(currentPlayer);
+    lastMoveTitleEl.textContent = `LAST MOVE FOR ${playerLabel}`;
+    lastMoveEl.replaceChildren();
+
+    const addRow = (text, className = "") => {
+        const row = document.createElement("div");
+        row.className = `last-move-row ${className}`.trim();
+        row.textContent = text;
+        lastMoveEl.appendChild(row);
+    };
+
+    if (details.length > 0) {
+        addRow(details[0], "main-word");
+    }
+
+    if (details.length <= 3) {
+        details.slice(1).forEach((detail) => addRow(detail, "secondary-word"));
+    } else {
+        const packedWords = details.slice(1);
+        if (bonus > 0) {
+            packedWords.push(`Scrabble bonus - ${bonus} pts`);
+        }
+        addRow(packedWords.join("; "), "packed-secondary");
+    }
+
+    if (bonus > 0 && details.length <= 3) {
+        addRow(`Scrabble bonus - ${bonus} pts`, "secondary-word");
+    }
+    addRow(`Total - ${gained} pts`, "move-total");
+}
+
+function getRackPenalty(rack) {
+    return rack.reduce((sum, tile) => sum + tile.value, 0);
+}
+
+function renderGameOver(reason, deductions) {
+    const highestScore = Math.max(...playerScores);
+    const winners = playerScores
+        .map((score, index) => score === highestScore ? getPlayerLabel(index) : null)
+        .filter(Boolean);
+
+    lastMoveTitleEl.textContent = "GAME OVER";
+    lastMoveEl.replaceChildren();
+
+    const addRow = (text, className = "") => {
+        const row = document.createElement("div");
+        row.className = `last-move-row ${className}`.trim();
+        row.textContent = text;
+        lastMoveEl.appendChild(row);
+    };
+
+    addRow(`${winners.join(" and ")} won.`, "main-word");
+    addRow(reason, "secondary-word");
+    deductions.forEach(({ playerIndex, penalty }) => {
+        if (penalty > 0) {
+            addRow(`${getPlayerLabel(playerIndex)}: -${penalty} pts for remaining tiles.`, "secondary-word");
+        }
+    });
+    playerScores.forEach((score, index) => {
+        addRow(`${getPlayerLabel(index)} final score: ${score} pts`, "secondary-word");
+    });
+}
+
+function endGame(reason) {
+    if (gameEnded) {
+        return;
+    }
+
+    const deductions = playerRacks.map((rack, playerIndex) => ({
+        playerIndex,
+        penalty: getRackPenalty(rack)
+    }));
+    deductions.forEach(({ playerIndex, penalty }) => {
+        playerScores[playerIndex] -= penalty;
+    });
+    gameEnded = true;
+    rerender();
+    renderGameOver(reason, deductions);
+}
+
 function submitMove() {
+    if (gameEnded) {
+        return;
+    }
     const rack = getActiveRack();
     const placed = Array.from(placedThisTurn);
     if (placed.length === 0) {
@@ -532,8 +724,12 @@ function submitMove() {
         }
     });
 
-    const gained = words.reduce((sum, word) => sum + scoreWord(word), 0);
+    const wordScores = words.map((word) => scoreWord(word));
+    const bonus = placed.length === 7 ? 50 : 0;
+    const gained = wordScores.reduce((sum, score) => sum + score, 0) + bonus;
     playerScores[currentPlayer] += gained;
+    consecutivePasses = 0;
+    renderLastMove(words, wordScores, gained, bonus);
 
     placed.forEach((idx) => {
         if (board[idx]) {
@@ -542,12 +738,14 @@ function submitMove() {
     });
 
     placedThisTurn.clear();
-    rack.push(...drawTiles(7 - rack.length, currentPlayer));
+    const playerFinished = rack.length === 0;
+    if (!playerFinished) {
+        rack.push(...drawTiles(7 - rack.length, currentPlayer));
+    }
     rerender();
-    setStatus(`Great move. +${gained} points.`, "ok");
 
-    if (bag.length === 0 && rack.length === 0) {
-        setStatus(`Game over. Final score: ${playerScores[currentPlayer]}`, "ok");
+    if (playerFinished) {
+        endGame(`${getPlayerLabel(currentPlayer)} used all tiles.`);
         return;
     }
 
@@ -557,18 +755,36 @@ function submitMove() {
 }
 
 function passTurn() {
+    if (gameEnded) {
+        return;
+    }
     recallTiles();
+    consecutivePasses += 1;
+    if (consecutivePasses >= playerCount) {
+        endGame("All players passed.");
+        return;
+    }
     currentPlayer = (currentPlayer + 1) % playerCount;
     turn += 1;
     rerender();
     setStatus("Turn passed.", "warn");
 }
 
-function newGame() {
+function isGameStarted() {
+    return playerRacks.length > 0 || turn > 1 || placedThisTurn.size > 0 || board.some(Boolean) || playerScores.some((score) => score > 0);
+}
+
+function newGame(skipConfirmation = false) {
+    if (!skipConfirmation && isGameStarted() && !window.confirm("A game is already in progress. Start a new game?")) {
+        return false;
+    }
+
     board = Array(BOARD_CELLS).fill(null);
     playerRacks = [];
     placedThisTurn = new Set();
     playerScores = Array(playerCount).fill(0);
+    consecutivePasses = 0;
+    gameEnded = false;
     currentPlayer = 0;
     turn = 1;
     bag = buildBag();
@@ -578,15 +794,24 @@ function newGame() {
     }
 
     playerCountEl.value = String(playerCount);
+    playerNames = Array.from({ length: playerCount }, (_, index) => playerNames[index] || "");
+    lastMoveTitleEl.textContent = "LAST MOVE FOR";
+    lastMoveEl.textContent = "No move scored yet.";
+    lastMoveEl.classList.remove("compact");
     rerender();
     setStatus(`New game started for ${playerCount} players. Player 1 begins.`, "warn");
+    return true;
 }
 
 playerCountEl.addEventListener("change", (event) => {
     const selected = Number(event.target.value);
     if (selected >= 2 && selected <= 4) {
+        const previousPlayerCount = playerCount;
         playerCount = selected;
-        newGame();
+        if (!newGame()) {
+            playerCount = previousPlayerCount;
+            playerCountEl.value = String(previousPlayerCount);
+        }
     }
 });
 
@@ -594,6 +819,6 @@ submitBtn.addEventListener("click", submitMove);
 recallBtn.addEventListener("click", recallTiles);
 shuffleBtn.addEventListener("click", shuffleRack);
 passBtn.addEventListener("click", passTurn);
-newBtn.addEventListener("click", newGame);
+newBtn.addEventListener("click", () => newGame());
 
-newGame();
+newGame(true);

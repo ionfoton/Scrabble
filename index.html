@@ -14,37 +14,22 @@
         </section>
 
         <aside class="side-panel">
-            <div class="stat-grid">
-                <div class="card">
-                    <span class="label">Score</span>
-                    <span class="value" id="score">0</span>
-                </div>
-                <div class="card">
-                    <span class="label">Current Player</span>
-                    <span class="value" id="current-player">1</span>
-                </div>
-                <div class="card">
-                    <span class="label">Tiles Left</span>
-                    <span class="value" id="tiles-left">0</span>
-                </div>
-                <div class="card">
-                    <span class="label">Rack</span>
-                    <span class="value" id="rack-count">0/7</span>
-                </div>
-            </div>
-
-            <div class="card">
+            <div class="card player-controls">
                 <label class="label" for="player-count">Players</label>
                 <select id="player-count">
                     <option value="2">2 Players</option>
                     <option value="3">3 Players</option>
                     <option value="4">4 Players</option>
                 </select>
+                <button id="new-btn" class="danger">New Game</button>
             </div>
 
             <div class="card scoreboard" id="player-scoreboard"></div>
 
-            <div id="status" class="warn">Drag tiles from your rack onto the board.</div>
+            <div class="card last-move-card">
+                <span id="last-move-title" class="label">LAST MOVE FOR</span>
+                <div id="last-move" class="last-move-details">No move scored yet.</div>
+            </div>
 
             <div id="rack"></div>
 
@@ -53,11 +38,10 @@
                 <button id="recall-btn" class="secondary">Recall Tiles</button>
                 <button id="shuffle-btn" class="secondary">Shuffle Rack</button>
                 <button id="pass-btn" class="secondary">Pass Turn</button>
-                <button id="new-btn" class="danger" style="grid-column: 1 / -1;">New Game</button>
             </div>
 
-            <div class="card">
-                <span class="label">Tile Inventory</span>
+            <div class="card inventory-card">
+                <span class="label inventory-total">Tile inventory: <strong id="inventory-total">0</strong></span>
                 <div id="tile-inventory" class="inventory-grid"></div>
             </div>
         </aside>
