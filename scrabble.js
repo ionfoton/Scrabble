@@ -739,12 +739,10 @@ function submitMove() {
 
     placedThisTurn.clear();
     const playerFinished = rack.length === 0;
-    if (!playerFinished) {
-        rack.push(...drawTiles(7 - rack.length, currentPlayer));
-    }
+    rack.push(...drawTiles(7 - rack.length, currentPlayer));
     rerender();
 
-    if (playerFinished) {
+    if (playerFinished && bag.length === 0) {
         endGame(`${getPlayerLabel(currentPlayer)} used all tiles.`);
         return;
     }
